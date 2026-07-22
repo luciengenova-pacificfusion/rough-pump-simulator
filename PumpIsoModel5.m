@@ -29,7 +29,7 @@ Copt = CoptLeg*4 % Damping coefficient of all 4 optical table legs
 % Set to 1 to simulate lab optical table test setup
 % Set to 2 to simulate DPM airbox only
 % Set to 3 or other to simulate DPM
-setup = 2;
+setup = 3;
 
 m1 = Mpump + Mbase + Mheatex % kg
 if setup == 1
@@ -67,7 +67,7 @@ k1_list = [9256*6, 33125*4, 47233*4];   % Match Tuned Values N/m
 ##z1_list = [0.18265*6, 0.05*4, 0.2*4]; % Researched Values Ns/m
 z1_list = [0.18*6, 0.1*4, 0.2*4]; % Match Tuned Values Ns/m
 
-wn_list = sqrt(k1_list./m1)/(2*pi) % Natural frequencies in Hz
+fn_list = sqrt(k1_list./m1)/(2*pi) % Natural frequencies in Hz
 
 % Estimate damping coefficients based on damping ratio, mass, and stiffness
 % Single mass model assumption valid as m1 << m2 (meff = m1m2/(m1+m2))
