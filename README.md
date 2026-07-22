@@ -111,7 +111,7 @@ Edit these variables at the top of the script:
 
 ### Worst-case model
 
-Uncomment `k2 = 0; c2 = 0;` to remove the optical-table-leg compliance and treat m2 as directly grounded through the isolator only.
+Uncomment `k2 = 0; c2 = 0;` to remove the optical-table-leg isolation and treat m2 as free floating in space (a worst case assumption for large structure modeling).
 
 ## Outputs
 
