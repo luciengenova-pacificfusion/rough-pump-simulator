@@ -33,7 +33,7 @@ The system is modeled as two lumped masses connected in series by spring–dampe
    ═════════════   Ground
 ```
 
-- **m1** — pump (75 kg) + heat exchanger (7 kg) + base plates (44 kg)
+- **m1** — pump (75 kg) + heat exchanger (7 kg) + base plates (2x at 22 kg each, edit to 1*22 to simulate single baseplate)
 - **m2** — selected by `setup` (optical table top, airbox, or DPM)
 - **k1, c1** — isolator stiffness and damping (per-isolator lists, multiplied by mount count)
 - **k2, c2** — optical table leg stiffness/damping (4 legs); can be zeroed for a worst-case rigid-mount comparison
