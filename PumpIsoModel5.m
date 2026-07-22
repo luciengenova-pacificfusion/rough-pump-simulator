@@ -102,7 +102,7 @@ for i = isoRange
 
     % Set up transfer function (output/input)
     x2x1 = (c1*s + k1)/(m2*s^2 + (c1+c2)*s + (k1+k2));
-    x2A = (c1*s + k1)/((m1*s^2 + c1*s + k1)*(m2*s^2 + (c1+c2)*s + (k1+k2)) - (c1*s + k1)); % Pump forcing input, DPM displacement output
+    x2A = (c1*s + k1)/((m1*s^2 + c1*s + k1)*(m2*s^2 + (c1+c2)*s + (k1+k2)) - (c1*s + k1)^2); % Pump forcing input, DPM displacement output
     x2A_array{i} = x2A;
     x1A = x2A / x2x1;
     x1A_array{i} = x1A;
