@@ -33,7 +33,7 @@ The system is modeled as two lumped masses connected in series by spring–dampe
    ═════════════   Ground
 ```
 
-- **m1** — pump (75 kg) + heat exchanger (7 kg) + base plates (2x at 22 kg each, edit to 1*22 to simulate single baseplate)
+- **m1** — pump (75 kg) + heat exchanger (7 kg) + base plates (2x at 22 kg each, edit to 1\*22 to simulate single baseplate)
 - **m2** — selected by `setup` (optical table top, airbox, or DPM)
 - **k1, c1** — isolator stiffness and damping (per-isolator lists, multiplied by mount count)
 - **k2, c2** — optical table leg stiffness/damping (4 legs); can be zeroed for a worst-case rigid-mount comparison
@@ -46,12 +46,41 @@ Forcing is a sum of three sinusoids representing pump excitation:
 | F2 | 20 N | 62 Hz |
 | F3 | 60 N | 224 Hz |
 
-Transfer functions are built symbolically with `tf('s')`:
+### Transfer functions
 
-- `x2A` — receiving-structure displacement per unit pump force
-- `x1A` — pump displacement per unit pump force
-- `v1A`, `v2A` — velocity TFs (`s·x`)
-- `a1A`, `a2A` — acceleration TFs (`s²·x`)
+Transfer functions are built symbolically with `tf('s')` from the coupled equations of motion:
+
+```
+m1·ẍ1 + c1·(ẋ1 − ẋ2) + k1·(x1 − x2) = F(t)
+m2·ẍ2 + c1·(ẋ2 − ẋ1) + k1·(x2 − x1) + c2·ẋ2 + k2·x2 = 0
+```
+
+The script implements:
+
+**Receiving structure displacement per pump displacement (transmissibility):**
+
+```
+X2(s)          c1·s + k1
+───── = ─────────────────────────────
+X1(s)   m2·s² + (c1+c2)·s + (k1+k2)
+```
+
+**Receiving structure displacement per unit pump force:**
+
+```
+X2(s)                         c1·s + k1
+───── = ────────────────────────────────────────────────────────────────
+F(s)    (m1·s² + c1·s + k1)·(m2·s² + (c1+c2)·s + (k1+k2)) − (c1·s + k1)²
+```
+
+**Derived transfer functions:**
+
+| Variable | Definition | Description |
+|----------|------------|-------------|
+| `x2A` | X2/F above | Receiving-structure displacement per unit pump force |
+| `x1A` | `x2A / x2x1` | Pump displacement per unit pump force |
+| `v1A`, `v2A` | `s·x1A`, `s·x2A` | Velocity transfer functions |
+| `a1A`, `a2A` | `s²·x1A`, `s²·x2A` | Acceleration transfer functions |
 
 Time responses are computed with `lsim` over a 10 s window at 10 kHz sampling.
 
@@ -78,7 +107,7 @@ Edit these variables at the top of the script:
 
 ### Isolator parameter sets
 
-`k1_list` (stiffness) and `z1_list` (damping ratio) each have three variants in the script — researched values, static-deflection-derived values, and match-tuned values. Uncomment the desired row. Match-tuned values are uncommented by defauls as these most closely match real world test data. Damping coefficients `c1_list` are derived from the damping ratios via `c = 2·ζ·√(k·m1)` (valid single-mass approximation since m1 ≪ m2).
+`k1_list` (stiffness) and `z1_list` (damping ratio) each have three variants in the script — researched values, static-deflection-derived values, and match-tuned values. Uncomment the desired row. Match-tuned values are uncommented by default as these most closely match real world test data. Damping coefficients `c1_list` are derived from the damping ratios via `c = 2·ζ·√(k·m1)` (valid single-mass approximation since m1 ≪ m2).
 
 ### Worst-case model
 
