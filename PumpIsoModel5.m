@@ -3,6 +3,8 @@ clear; clc; close all;
 pkg load control
 pkg load signal
 
+bodePlot = false; % Set to true to generate system frequency response plot
+
 % ----- Isolator selection -----
 % Set to 1, 2, or 3 to choose which isolator is processed and plotted:
 % 1 = Sorbothane, 2 = Air shock, 3 = Wire rope
@@ -12,15 +14,15 @@ isoSelect = 4;
 
 Mpump = 75;
 Mheatex = 7;
-Mbase = 22*2;
+Mbase = 22*1; % 22kg per plate, change multiplier to adjust setup
 
 Mdpm = 16000;
 Mairbox = 4000;
 
 Mopt = 877.8/2.2 % Mass of optical table top surface
-KoptLeg = 1766396.89; % Ns/m
+KoptLeg = 1766396.89; % N/m, sorbothane researched value
 Kopt = KoptLeg*4 % Spring rate of all 4 optical table legs
-ZoptLeg = 0.18265;
+ZoptLeg = 0.18265; % Damping ratio, sorbothane researched value
 CoptLeg = 2 * ZoptLeg * sqrt(KoptLeg * Mopt);
 Copt = CoptLeg*4 % Damping coefficient of all 4 optical table legs
 
@@ -29,7 +31,7 @@ Copt = CoptLeg*4 % Damping coefficient of all 4 optical table legs
 % Set to 1 to simulate lab optical table test setup
 % Set to 2 to simulate DPM airbox only
 % Set to 3 or other to simulate DPM
-setup = 3;
+setup = 1;
 
 m1 = Mpump + Mbase + Mheatex % kg
 if setup == 1
@@ -39,6 +41,7 @@ elseif setup == 2
 else
   m2 = Mdpm;
 end
+m2
 
 F1 = 60; % Estimated force amplitude (N)
 f1 = 112; % forcing frequency (Hz)
@@ -63,9 +66,8 @@ end
 
 ##k1_list = [166706.80*6, 35110.95*4, 101281.59*4];   % Researched Values N/m
 ##k1_list = [83829*6, 33125*4, 472333*4];   % Static Deflection Values N/m
-k1_list = [9256*6, 33125*4, 47233*4];   % Match Tuned Values N/m
-##z1_list = [0.18265*6, 0.05*4, 0.2*4]; % Researched Values Ns/m
-z1_list = [0.18*6, 0.1*4, 0.2*4]; % Match Tuned Values Ns/m
+k1_list = [13300*6, 38000*4, 92000*4];   % Match Tuned Values N/m
+z1_list = [0.18265*6, 0.1*4, 0.2*4]; % Researched Values Ns/m
 
 fn_list = sqrt(k1_list./m1)/(2*pi) % Natural frequencies in Hz
 
@@ -175,6 +177,8 @@ df = fs/nfft;
 vcC = 12.5;   % VC-C
 vcD = 6.25;   % VC-D
 vcE = 3.12;   % VC-E
+vcF = 1.65;   % VC-F
+vcG = 0.78;   % VC-G
 
 % Pump velocity spectrum
 subplot(2,1,1);
@@ -183,6 +187,7 @@ grid on
 for i = isoRange
     vel1 = lsim(v1A_array{i}, A, t);   % pump velocity time response
     [Pxx, fw] = pwelch(vel1, window, noverlap, nfft, fs);
+    Pxx1_array{i} = Pxx;               % store pump PSD for band calcs
     vrms = sqrt(Pxx * df)*1e6;
     plot(fw, vrms, 'DisplayName', isolators{i});
 end
@@ -193,8 +198,6 @@ set(gca, 'XScale', 'linear', 'YScale', 'linear');
 xlim([0 1000]);
 xticks(0:50:1000);
 yline(vcC, '--', 'VC-C');
-yline(vcD, '--', 'VC-D');
-yline(vcE, '--', 'VC-E');
 ##legend('Location','northeast')
 hold off
 
@@ -205,6 +208,7 @@ grid on
 for i = isoRange
     vel2 = lsim(v2A_array{i}, A, t);   % base velocity time response
     [Pxx, fw] = pwelch(vel2, window, noverlap, nfft, fs);
+    Pxx2_array{i} = Pxx;               % store base PSD for band calcs
     vrms = sqrt(Pxx * df)*1e6;
     plot(fw, vrms, 'DisplayName', isolators{i});
 end
@@ -217,8 +221,33 @@ xticks(0:50:1000);
 yline(vcC, '--', 'VC-C');
 yline(vcD, '--', 'VC-D');
 yline(vcE, '--', 'VC-E');
+yline(vcF, '--', 'VC-F');
+yline(vcG, '--', 'VC-G');
 ##legend('Location','northeast')
 hold off
+
+% -------- Band-limited RMS velocity from Welch spectra --------
+% Band RMS = sqrt( sum(PSD * df) ) over the bins inside the band.
+% Percent gain reported as v1/v2 (pump-to-base ratio) x 100.
+
+bands = [0 250; 50 250];   % Hz, [low high] per row
+
+fprintf('\n===== Band-limited RMS velocity (Welch) =====\n');
+for i = isoRange
+    fprintf('\n%s:\n', isolators{i});
+    fLo = bands(1,1);
+    fHi = bands(1,2);
+    idx = (fw >= fLo) & (fw <= fHi);
+
+    v1band = sqrt(sum(Pxx1_array{i}(idx)) * df) * 1e6;  % pump, um/s RMS
+    v2band = sqrt(sum(Pxx2_array{i}(idx)) * df) * 1e6;  % base, um/s RMS
+
+    gainPct = (v2band / v1band) * 100;   % v1/v2 percent gain
+##    attenPct = (1 - v2band / v1band) * 100; % percent reduction pump->base
+
+    fprintf('  %g-%g Hz:  v1/v2 gain = %.3f %%, Pump = %.3f um/s RMS,  Base = %.3f um/s RMS\n', fLo, fHi, gainPct, v1band, v2band);
+end
+fprintf('\n');
 
 ##% Time response position
 ##figure(1);
@@ -265,25 +294,27 @@ hold off
 ##hold off
 ##%%
 
-##% Frequency response
-##figure(4); clf
-##hold on
-##
-##w_plot = logspace(0,3,1000); % rad/s
-##
-##for i = isoRange
-##    [mag, ~] = bode(x2A_array{i}, w_plot);
-##    mag = squeeze(mag);
-##    semilogx(w_plot/(2*pi), mag2db(mag), 'DisplayName', isolators{i});
-##end
-##
-##grid on
-##xlabel('Frequency (Hz)')
-##ylabel('Magnitude (dB)')
-##title('Frequency Response')
-##legend('Location','northeast')
-##
-##% Operating frequency marker
-##xline(f, '--k', sprintf('Operating Freq = %.2f Hz', f), 'LabelVerticalAlignment', 'middle', 'LabelOrientation', 'horizontal');
-##
-##hold off
+if bodePlot == true
+  % Frequency response, y axis seems off
+  figure(4); clf
+  hold on
+
+  w_plot = logspace(0,3,1000); % rad/s
+
+  for i = isoRange
+      [mag, ~] = bode(x2A_array{i}, w_plot);
+      mag = squeeze(mag);
+      semilogx(w_plot/(2*pi), mag2db(mag), 'DisplayName', isolators{i});
+  end
+
+  grid on
+  xlabel('Frequency (Hz)')
+  ylabel('Magnitude (dB)')
+  title('Frequency Response')
+  legend('Location','northeast')
+
+  % Operating frequency marker
+  xline(f, '--k', sprintf('Operating Freq = %.2f Hz', f), 'LabelVerticalAlignment', 'middle', 'LabelOrientation', 'horizontal');
+
+  hold off
+end
